@@ -3,8 +3,8 @@ from typing import Dict, Any
 import psutil
 import logging
 
-from parquet_overhead import ParquetOverheadEstimator
-from csv_overhead import CsvOverhead, CsvOverheadEstimator
+from .parquet_overhead import ParquetOverheadEstimator
+from .csv_overhead import CsvOverhead, CsvOverheadEstimator
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s-%(levelname)s-%(message)s')
 logger = logging.getLogger(__name__)
@@ -96,7 +96,6 @@ class PipelineEstimatedSizeFiles:
             overhead_parquet= ParquetOverheadEstimator(archivo=self.archivo, n_rows_sample=self.n_rows_sample)
             resources_parquet=self.estimator.estimate_parquet_size(class_overhead_parquet=overhead_parquet)
             
-            resources_parquet['parquet_metadata']= overhead_parquet.metadata
             resources_parquet['tamaño_archivo']=self.archivo.stat().st_size
             if resources_parquet['ratio'] <= 0.65: 
                 resources_parquet['decision']= 'eager'
