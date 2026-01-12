@@ -1,251 +1,259 @@
-# 🚀 Data Memory Optimizer
+# 🧠 Memory-Aware Data Loader
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![Polars](https://img.shields.io/badge/Polars-Fast__DataFrames-red.svg)](https://pola.rs/)
-[![PyArrow](https://img.shields.io/badge/PyArrow-Efficient__Memory-orange.svg)](https://arrow.apache.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![PyArrow](https://img.shields.io/badge/PyArrow-Parquet__Tools-orange.svg)](https://arrow.apache.org/docs/python/index.html)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-Una herramienta inteligente de optimización de memoria que analiza automáticamente archivos de datos (CSV/Parquet) y determina la estrategia óptima de procesamiento (`eager`, `lazy`, o `streaming`) basada en los recursos del sistema.
+¿Cansado de que tus pipelines de datos crasheen por Out Of Memory (OOM)? Este sistema inteligente analiza tus archivos ANTES de cargarlos y decide automáticamente la estrategia óptima: eager, lazy, o streaming. Nunca más vuelvas a reventar tu RAM. 🚫💥
 
-## 🔍 El Problema que Resuelvo
+## 🎯 El Problema Que Resuelvo
 
-Como Data Engineer, constantemente enfrento la pregunta: **¿Cómo procesar este archivo sin saturar la memoria del sistema?** 
+Cuando trabajas con grandes datasets, el clásico *pandas.read_csv()* o *polars.read_parquet()* puede:
 
-Esta herramienta responde automáticamente esa pregunta analizando:
-- 📊 **Overhead específico** de CSV vs Parquet
-- 💾 **Recursos disponibles** del sistema
-- 📏 **Tamaño y estructura** de los datos
-- ⚡ **Estrategia óptima**: eager, lazy, o streaming
+- Consumir toda tu RAM y causar OOM
+- Activar swapping 
+- Apagar tu computadora en el peor caso
+- Fallas en producción con datos impredecibles
 
-## 🎯 Características Principales
+**Memory-Aware Data Loader** soluciona esto analizando inteligentemente:
 
-### 📈 **Análisis Inteligente de Archivos**
+1. 📊 Tipo de datos de cada columna
+2. 🧮 Overhead real por formato (CSV vs Parquet)
+3. 💻 Memoria disponible en tu sistema
+4. ⚡ Estrategia óptima de carga
 
-- Estimación precisa de overhead por tipo de columna
-- Análisis de strings y su impacto en memoria
-- Soporte para CSV y Parquet con algoritmos especializados
+## ✨ Características Principales
 
-### 💡 **Decision Making Automático**
+### 🧠 **Análisis Inteligente Pre-Carga**
 
-- Basado en ratio memoria estimada / memoria disponible
-- Umbrales optimizados por experiencia empírica
-- Considera margen de seguridad para el sistema operativo
+- Estimación precisa de memoria necesaria
+- Soporte multi-formato: CSV y Parquet
+- Overhead por tipo de dato: strings, integers, floats, etc.
+- Uso de metadata real de PyArrow para Parquet
 
-### 📊 **Métricas y Resultados Medibles**
+### ⚡ **Decision Making Automático**
 
-- Ratio de utilización de memoria
-- Overhead estimado por tipo de dato
-- Recomendación cuantificada y justificada
+- *eager*: Carga completa en RAM (si hay espacio)
+- *lazy*: Usa LazyFrames (evaluación diferida)
+- *streaming*: Carga por chunks (para datos enormes)
+- Basado en ratio memoria_necesaria / memoria_disponible
 
-## 🚀 Instalación y Uso Rápido
+### 🛡️ **Seguridad y Robustez**
 
-### **Instalación**
+- Margen de seguridad configurable (30% por defecto)
+- Prevención de OOM antes de que ocurra
+- Manejo de edge cases y tipos de datos complejos
+- Logging detallado para debugging
+
+## 📊 ¿Cómo Funciona?
+
+### **Para archivos CSV:**
+
+1. **Muestra** las primeras 1000 filas.
+2. **Analiza** los tipos de datos de cada columna.
+3. **Calcula** el *overhead* por tipo (los strings son más costosos).
+4. **Estima** los bytes por fila × número total de filas.
+5. **Aplica** el factor de overhead del formato CSV.
+
+### **Para archivos Parquet:**
+
+1. **Lee** metadata con PyArrow
+2. **Obtiene** tamaño descomprimido real
+3. **Analiza** schema y tipos de datos
+4. **Calcula** overhead específico por tipo
+5. **Usa** tamaño real × overhead × filas
+
+### **Decisión final:**
+
+```python 
+if ratio <= 0.65:    # Usa menos del 65% de RAM disponible
+    return "eager"   # ✅ Carga completa
+elif ratio <= 2.0:   # Entre 65% y 200%
+    return "lazy"    # ⚡ Usa LazyFrame
+else:                # Más del 200%
+    return "streaming" # 🚀 Carga por chunks
+```
+
+## 🚀 Instalación
 
 ```bash
-git clone https://github.com/sm7ss/data-memory-optimizer.git
-cd data-memory-optimizer
+# Clonar el repositorio
+git clone https://github.com/sm7ss/memory-aware-data-loader.git
+cd memory-aware-data-loader
+
+# Instalar dependencias
 pip install -r requirements.txt
 ```
 
-### **Uso Básico**
+### **Dependencias:**
+
+```text 
+polars>=0.19.0
+pyarrow>=14.0.0
+psutil>=5.9.0
+```
+
+## 💻 Uso Rápido
+
+### **Ejemplo básico:**
 
 ```python 
-from src.path_desicion_maker import PipelineEstimatedSizeFiles
+from memory_aware_loader import PipelineEstimatedSizeFiles
 
 # Analizar un archivo
-analyzer = PipelineEstimatedSizeFiles("datos.csv")
+analyzer = PipelineEstimatedSizeFiles("datos_grandes.parquet")
 result = analyzer.estimated_size_file()
 
-print(f"Estrategia recomendada: {result['decision']}")
-print(f"Ratio memoria: {result['ratio']}")
-print(f"Memoria estimada: {result['memoria_total_estimada_gb']} GB")
+print(f"📊 Decisión: {result['decision']}")
+print(f"🧮 Ratio memoria: {result['ratio']:.2%}")
+print(f"⚡ Overhead estimado: {result['overhead_estimado']}")
 ```
 
-## 📊 Resultados de Pruebas (Métricas Reales)
-
-### 📈 **Archivo Parquet Grande**
+### **Integración con Polars:**
 
 ```python 
-{
-    'ratio': 1.325,
-    'overhead_estimado': 1.36,
-    'safety_memory': 4.667,
-    'archivo_descomprimido_gb': 5.612,
-    'total_de_filas_gb': 244673551,
-    'memoria_total_estimada_gb': 7.632,
-    'memoria_disponible': 10.426,
-    'total_memory': 15.555,
-    'decision': 'lazy'  # ✅ Recomendación óptima
-}
-```
+import polars as pl
+from memory_aware_loader import PipelineEstimatedSizeFiles
 
-### 📊 **Archivo CSV Pequeño**
-
-```python 
-{
-    'ratio': 0.0,
-    'total_rows': 89,
-    'bytes_por_columna': 148.0,
-    'safety_memory': 4.667,
-    'memoria_total_estimada_gb': 0.0,
-    'memoria_disponible': 10.424,
-    'total_memory': 15.555,
-    'decision': 'eager'  # ✅ Puede cargarse completo
-}
-```
-
-## 🔧 Algoritmos Implementados
-
-### **CSV Overhead Analysis**
-
-```python 
-class CsvOverhead:
-    def string_csv_overhead(self) -> float:
-        # Análisis de overhead específico de strings en CSV
-        avg_len = sum(self.frame_sample[col].str.len_bytes().median() 
-                     for col in self.str_columns) / len(self.str_columns)
-        
-        # Asignación de factor basado en longitud promedio
-        if avg_len <= 1: return 2.0
-        elif avg_len <= 5: return 1.8
-        elif avg_len <= 10: return 1.6
-        # ... lógica optimizada
-```
-
-### **Parquet Overhead Analysis**
-
-```python 
-class ParquetOverheadEstimator:
-    def string_overhead(self) -> float:
-        # Cálculo especializado para strings en Parquet
-        avg_string_len = sum([
-            sample_median[col].str.len_bytes().sum() 
-            for col in string_columns
-        ]) / len(string_columns)
-        
-        base = 1.0 + 4.0 / avg_string_len
-        # Ajustes basados en benchmarks reales
-```
-
-### **Decision Making Engine**
-
-```python 
-class FileSizeEstimator:
-    def estimate_csv_size(self, csv_overhead_class) -> Dict[str, Any]:
-        # Cálculo de ratio crítico
-        ratio = estimated_memory / usable_ram
-        
-        # Lógica de decisión optimizada
-        if ratio <= 0.65: return 'eager'
-        elif ratio <= 2.0: return 'lazy'
-        else: return 'streaming'
-```
-
-## 🎯 Lógica de Decisión
-
-### 📈 **Thresholds Optimizados**
-
-| Ratio (Estimado/Disponible) | Estrategia | Justificación                          |
-|-----------------------------|------------|----------------------------------------|
-| **≤ 0.65**                  | eager      | Memoria suficiente para carga completa |
-| **0.65 - 2.0**              | lazy	   | Procesamiento por lotes recomendado    |
-| **> 2.0**	                  | streaming  | Requiere procesamiento incremental     |
-
-### 🛡️ **Safety Margins**
-
-- 30% de memoria reservada para sistema operativo
-- Análisis por tipo de dato con overhead específico
-- Consideración de strings como mayor impacto
-
-### 📦 **Dependencias**
-
-polars>=0.19.0
-pyarrow>=12.0.0
-psutil>=5.9.0
-
-## 🏆 Casos de Uso en Producción
-
-### **1. Pipeline de ETL Automatizado**
-
-```python 
-# Integración en pipeline de data engineering
-def process_file_optimally(file_path: str):
+def smart_load(file_path):
     analyzer = PipelineEstimatedSizeFiles(file_path)
     result = analyzer.estimated_size_file()
     
     if result['decision'] == 'eager':
-        return pl.read_csv(file_path)  # Carga completa
+        return pl.read_parquet(file_path)
     elif result['decision'] == 'lazy':
-        return pl.scan_csv(file_path)  # Procesamiento lazy
-    else:
-        return pl.scan_csv(file_path).collect(streaming=True)  # Streaming
+        return pl.scan_parquet(file_path)
+    else:  # streaming
+        return #Aquí tu engine para streaming
+
+# Uso automático y seguro
+df = smart_load("datos_masivos.parquet")
 ```
 
-### **2. Sistema de Monitoreo de Recursos**
+## 📈 Resultados Reales
+
+### **Archivo Parquet (1M filas):**
 
 ```python 
-# Monitoreo proactivo de uso de memoria
-class ResourceMonitor:
-    def check_file_safety(self, file_path: str):
-        result = PipelineEstimatedSizeFiles(file_path).estimated_size_file()
-        if result['ratio'] > 1.5:
-            logger.warning(f"Archivo {file_path} puede saturar memoria")
-            return False
-        return True
+{
+    'decision': 'eager',
+    'ratio': 0.99%,  # ¡Solo 1% de la RAM!
+    'overhead_estimado': 1.22,
+    'memoria_total_estimada': '105 MB',
+    'memoria_disponible': '10.6 GB'
+}
 ```
 
-### **3. Optimización de Queries**
+### **Archivo Parquet (244M filas):**
 
 ```python 
-# Selección automática de estrategia de query
-def optimize_query(file_path: str, query):
+{
+    'decision': 'lazy',  # ⚡ Cambia a LazyFrame automáticamente
+    'ratio': 77.46%,
+    'overhead_estimado': 1.36,
+    'memoria_total_estimada': '8.2 GB',
+    'memoria_disponible': '10.6 GB'
+}
+```
+
+### **Archivo CSV (1M filas):**
+
+```python 
+{
+    'decision': 'eager',
+    'csv_overhead': 1.59,  # CSV tiene más overhead
+    'ratio': 2.12%,
+    'memoria_total_estimada': '225 MB'
+}
+```
+
+## 🔧 Configuración Avanzada
+
+```python 
+# Margen de seguridad personalizado (30% por defecto)
+analyzer = PipelineEstimatedSizeFiles(
+    "datos.parquet",
+    os_margin=0.3,        # 30% de margen de seguridad
+    n_rows_sample=5000    # Muestreo más grande para estimación
+)
+
+# Resultados completos
+result = analyzer.estimated_size_file()
+print(f"🔧 Margen de seguridad: {result['os_margin']}")
+print(f"🛡️  Memoria de seguridad: {result['safety_memory']:,} bytes")
+print(f"📊 Tamaño del archivo: {result['tamaño_archivo']:,} bytes")
+```
+
+## 🎯 Casos de Uso
+
+### **1. Data Engineering Pipelines**
+
+```python 
+# En tus ETLs, carga segura siempre
+for file in data_files:
+    analyzer = PipelineEstimatedSizeFiles(file)
+    if analyzer.estimated_size_file()['decision'] == 'streaming':
+        logger.warning(f"{file} requiere streaming - consider partitioning")
+```
+
+### **2. ML Training Data Loading**
+
+```python 
+# Previene OOM durante carga de datasets de entrenamiento
+def load_training_data(path):
+    result = PipelineEstimatedSizeFiles(path).estimated_size_file()
+    if result['decision'] != 'eager':
+        # Dataset muy grande, considerar samplear o usar incremental learning
+        return load_with_care(path, result)
+```
+
+### **3. Serverless/Cloud Functions**
+
+```python 
+# En entornos con memoria limitada (Lambda, Cloud Functions)
+def handler(event, context):
+    file_path = event['file']
     result = PipelineEstimatedSizeFiles(file_path).estimated_size_file()
     
-    if result['decision'] == 'streaming':
-        return execute_streaming_query(file_path, query)
-    else:
-        return execute_standard_query(file_path, query)
+    if result['ratio'] > 0.8:
+        # Memoria insuficiente, procesar por partes
+        return process_in_chunks(file_path)
 ```
 
-## 🔬 Detalles Técnicos Avanzados
+### **4. Monitoring Data Pipelines**
 
-### **Overhead por Tipo de Dato**
-
-| Tipo de Dato	    | CSV Overhead | Parquet Overhead | Justificación        |
-|-------------------|--------------|------------------|----------------------|
-| **Int8/16/32/64** | 1.4-1.55     | 1.2-1.35         |	Overhead de encoding |
-| **Float32/64**	| 1.6-1.65	   | 1.4-1.45         |	Precisión decimal    |
-| **String**	    | 1.1-2.0	   | 1.05-2.2         |	Longitud variable    |
-| **Boolean**	    | 2.5	       | 2.0	          | Ineficiente en texto |
-| **DateTime**	    | 1.85	       | 1.55	          | Formato timestamp    |
-
-### **Fórmulas de Estimación**
-
-```bash
-# Memoria Estimada CSV
-memoria_csv = (filas × overhead_promedio × bytes_por_columna) / 1024³
-
-# Memoria Estimada Parquet  
-memoria_parquet = (overhead_promedio × tamaño_descomprimido) / 1024³
-
-# Ratio de Decisión
-ratio = memoria_estimada / (memoria_disponible - margen_seguridad)
+```python 
+# Alertar antes de que ocurran problemas
+def monitor_pipeline(files):
+    for file in files:
+        analysis = PipelineEstimatedSizeFiles(file).estimated_size_file()
+        if analysis['ratio'] > 1.5:
+            alert_team(f"File {file} may cause OOM: ratio={analysis['ratio']}")
 ```
+
+## 🏆 Habilidades Demostradas
+
+### **Hard Skills:**
+
+- Memory Management: Estimación precisa de uso de RAM
+- File Format Expertise: CSV, Parquet, metadata parsing
+- Systems Programming: psutil, análisis de hardware
+- Adaptive Algorithms: Toma de decisiones basada en condiciones
+- Production Engineering: Prevención de errores, safety margins
+
+### **Soft Skills:**
+
+- Proactive Problem Solving: Previene errores antes de que ocurran
+- Systems Thinking: Considera hardware, software y datos
+- User-Centric Design: Soluciona problemas reales de data engineers
 
 ## 🤝 Contribución
 
-¡Contribuciones son bienvenidas! Si tienes ideas para mejorar el algoritmo o agregar nuevas características:
+¡Contribuciones son bienvenidas! 
 
-1. Haz fork del proyecto
-2. Crea una rama para tu feature (git checkout -b feature/mejora-algoritmo)
-3. Commit tus cambios (git commit -m 'Agregar soporte para formato X')
-4. Push a la rama (git push origin feature/mejora-algoritmo)
+1. Fork el proyecto
+2. Crea una rama (git checkout -b feature/CoolFeature)
+3. Commit tus cambios (git commit -m 'Add some CoolFeature')
+4. Push a la rama (git push origin feature/CoolFeature)
 5. Abre un Pull Request
-
-## 👩‍💻 Sobre Este Proyecto
-
-Este proyecto nació de la necesidad práctica de o**ptimizar el uso de memoria en pipelines de data engineering**. Como Data Engineer, constantemente enfrentaba el dilema de elegir entre eager, lazy y streaming sin métricas concretas.
-
-Las **métricas presentadas son reales** y representan pruebas con archivos de diferentes tamaños y complejidades. Cada decisión está respaldada por análisis cuantitativo y validación empírica.
-
-**¿Preguntas o sugerencias?** ¡No dudes en abrir un issue!
